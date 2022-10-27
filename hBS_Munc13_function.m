@@ -23,9 +23,9 @@ function [Treal, Tboot, allMeans, SE, CI, pValue] = ...
 % - pValue, probability of H0 given our data
 %
 
-% Two gene families involved in synaptic release (RIM and ELKS) are 
+% Two protein families involved in synaptic release (RIM and ELKS) are 
 % removed, which reduces synaptic transmission by about 80%. 
-% Now, it is addressed whether knockout of a third gene family, Munc13, 
+% Now, it is addressed whether knockout of a third protein family, Munc13, 
 % further reduces synaptic transmission over this 80% reduction. 
 % However, since the conditional RIM+ELKS knockout is in a different mouse
 % strain from the conditional RIM+ELKS+Munc13, 
@@ -35,8 +35,8 @@ function [Treal, Tboot, allMeans, SE, CI, pValue] = ...
 % identical except for the absence/presence of Cre.
 % 
 % We define:
-% S_1 = Strain 1: RIMs+ELKS
-% S_2 = Strain 2: RIMs+ELKS+Munc13
+% S_1 = Strain 1: R+E(RIM+ELKS)
+% S_2 = Strain 2: R+E+M (RIM+ELKS+Munc13)
 % 
 % To perform an experiment in a given strain, the hippocampi of several 
 % newborn mice are dissected out, and the cells are dissociated and 
@@ -47,8 +47,7 @@ function [Treal, Tboot, allMeans, SE, CI, pValue] = ...
 % From each culture, multiple cells are tested. Each cell is patch clamped 
 % and synaptic transmission is tested by measuring the size of the 
 % postsynaptic current (EPSC or IPSC) evoked by an action potential or 
-% the size of the postsynaptic currentreadily releasable pool evoked by 
-% the application of hypertonic sucrose. 
+% by the application of hypertonic sucrose. 
 % This measurement (= sweep, technical replicate) is repeated 5-6 times 
 % for each cell for action potential-evoked release, and once per cell 
 % for sucrose-evoked release. The culture procedure is typically repeated 
@@ -56,7 +55,7 @@ function [Treal, Tboot, allMeans, SE, CI, pValue] = ...
 % 
 % We define:
 % C_1 = Condition 1: cKO
-% C_2 = Condition 2: Control
+% C_2 = Condition 2: control
 % 
 % Thus each group of 5 related measurements is uniquely identified by FOUR
 % numbers, which will be variables (columns) in the Excel file. The Excel
@@ -69,14 +68,14 @@ function [Treal, Tboot, allMeans, SE, CI, pValue] = ...
 % 
 % For ease of discussion, we'll think of four groups:
 % 
-% Group A: S_1, C_1 (RIMS+ELKS cKO)
-% Group B: S_1, C_2 (RIMS+ELKS Control)
-% Group C: S_2, C_1 (RIMS+ELKS+Munc13 cKO)
-% Group D: S_2, C_2 (RIMS+ELKS+Munc13 Control)
+% Group A: S_1, C_1 (R+E cKO)
+% Group B: S_1, C_2 (R+E control)
+% Group C: S_2, C_1 (R+E+M cKO)
+% Group D: S_2, C_2 (R+E+M control)
 % 
 % The scientific question is whether knocking out Munc13 in addition to 
 % RIM+ELKS causes a greater relative decrease in synaptic transmission. 
-% So we will define our test statistic, T, as:
+% So we define our test statistic, T, as:
 % 
 % T = (mean(Group_A) / mean(Group_B)) / . . . 
 %     (mean(Group_C) / mean(Group_D)) 
@@ -85,7 +84,7 @@ function [Treal, Tboot, allMeans, SE, CI, pValue] = ...
 %       T > 1
 % 
 % In this hierarchical bootstrap, we directly estimate the sampling
-% distribution of our test statistic by re-sampling, with replacement, from
+% distribution of the test statistic by re-sampling, with replacement, from
 % the raw data, while preserving the hierarchical relationships in the
 % data. For each bootstrap iteration, Group identity (fixed effect) is
 % preserved. We do our re-sampling at three nested levels of what would be
@@ -111,9 +110,9 @@ varNames = ds.Properties.VariableNames;
 %% Calculate the actual value of our test statistic, T
 
 dsGrpA = ds((ds.Strain == 1) & (ds.Condition == 1),:);  % RIM+ELKS cKO
-dsGrpB = ds((ds.Strain == 1) & (ds.Condition == 2),:);  % RIM+ELKS Control
+dsGrpB = ds((ds.Strain == 1) & (ds.Condition == 2),:);  % RIM+ELKS control
 dsGrpC = ds((ds.Strain == 2) & (ds.Condition == 1),:);  % RIM+ELKS+Munc13 cKO
-dsGrpD = ds((ds.Strain == 2) & (ds.Condition == 2),:);  % RIM+ELKS+Munc13 Control
+dsGrpD = ds((ds.Strain == 2) & (ds.Condition == 2),:);  % RIM+ELKS+Munc13 control
 
 Treal = (mean(dsGrpA.PSC,'omitnan') / mean(dsGrpB.PSC,'omitnan')) / ...
         (mean(dsGrpC.PSC,'omitnan') / mean(dsGrpD.PSC,'omitnan'));
@@ -126,8 +125,7 @@ Treal = (mean(dsGrpA.PSC,'omitnan') / mean(dsGrpB.PSC,'omitnan')) / ...
 % "sucrose" experiments, there is only one data point per cell.
 
 % Many 'for' loops, and a lot of subsetting of the data (which can probably
-% be avoided with more thought), so this might be kinda slow. Let's time it
-% for different values of nBoot
+% be avoided with more thought)
 tic;
 % For nBoot = 100,000, run time of about 45 min.
 % For nBoot = 10,000 the run time was around 353 seconds (almost 6 minutes)
@@ -135,17 +133,17 @@ tic;
 % For nBoot = 100, run time is about 3 seconds
 
 % define constants:
-nStrains = 2;   % S_1 = RIMs+ELKS, S_2 = RIMs+ELKS+Munc13
-nConds = 2;     % C_1 = cKO, C_2 = Control
+nStrains = 2;   % S_1 = RIM+ELKS, S_2 = RIM+ELKS+Munc13
+nConds = 2;     % C_1 = cKO, C_2 = control
 
 % variable to store the grand mean value of the EPSCs for each group (rows)
 % and each bootstrap iteration (columns):
 allMeans = zeros(nStrains*nConds, nBoot);
 
 for thisBoot = 1:nBoot
-    % Two strains: RIMS+ELKS and RIMS+ELKS+Munc13
+    % Two strains: RIMS+ELKS and RIM+ELKS+Munc13
     for thisStrain = 1: nStrains
-        % Two conditions: cKO and Control
+        % Two conditions: cKO and control
         for thisCond = 1:nConds
             
             % Temporary variable to hold the resampled EPSC values:
@@ -213,7 +211,7 @@ Tboot = (allMeans(1,:) ./ allMeans(2,:)) ./ (allMeans(3,:) ./ allMeans(4,:));
 elapsedTimeInSeconds = toc;
 disp(['Run time was ' num2str((elapsedTimeInSeconds/60),2) ' min.']);
 
-%% Calculate standard error, confidence intervals and a p-value
+%% Calculate standard error, confidence intervals and a P_H0-value
 
 % calculate the standard error:
 SE = std(Tboot);
@@ -226,7 +224,7 @@ CIhi = sortedTboot(idxHi);
 CIlo = sortedTboot(idxLo);
 CI = [CIlo, CIhi];
 
-% calculate p-value:
+% calculate P_H0-value:
 pValue = sum(Tboot <= 1) / nBoot;
 
 if pValue == 0
