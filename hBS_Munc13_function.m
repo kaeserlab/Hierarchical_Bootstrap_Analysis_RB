@@ -6,7 +6,7 @@ function [Treal, Tboot, allMeans, SE, CI, pValue] = ...
 % [Treal, Tboot, allMeans, SE, CI, pVal] = 
 %       hBS_Munc13_function(fileName, hFlag, nBoot, myAlpha, pFlag)
 %
-% ex. [Treal, Tboot, allMeans, SE, CI, pVal] = hBS_Munc13_function('dataset 1-sucrose IPSC-v4.xlsx', 0, 10000,0.05, 1);
+% ex. [Treal, Tboot, allMeans, SE, CI, pVal] = hBS_Munc13_function('dataset 1-sucrose IPSC-v4.xlsx', 1, 1000,0.05, 1);
 %
 % Inputs:
 % - fileName, name of an excel data file
@@ -22,32 +22,40 @@ function [Treal, Tboot, allMeans, SE, CI, pValue] = ...
 % - CI, confidence interval corresponding to myAlpha
 % - pValue, probability of H0 given our data
 %
-% 29 September 2022, RTB wrote it; plane ride to MKE, mom's hip surgery
-% 08 October 2022, converted to function & added option for
-%    non-hierarchical bootstrap
 
-% When the Kaeser lab knocks out two genes involved in synaptic
-% release (RIMs & ELKS), synaptic transmission is reduced by about 80%. Now
-% they want to ask whether KO'ing a 3rd gene, Munc13, further reduces
-% synaptic transmission. However, since the double KO (RIMs/ELKS) is in a
-% different mouse strain from the triple KO (RIMs/ELKS/Munc13), the
-% synaptic transmission in each strain's KO must be compared to its own
-% control.
+% Two gene families involved in synaptic release (RIM and ELKS) are 
+% removed, which reduces synaptic transmission by about 80%. 
+% Now, it is addressed whether knockout of a third gene family, Munc13, 
+% further reduces synaptic transmission over this 80% reduction. 
+% However, since the conditional RIM+ELKS knockout is in a different mouse
+% strain from the conditional RIM+ELKS+Munc13, 
+% the measured parameters of synaptic transmission in each conditional 
+% knockout strain must be compared to their own controls. 
+% In each strain, the controls and test conditions are genetically 
+% identical except for the absence/presence of Cre.
 % 
-% S_1 = Strain 1: RIMs/ELKS-Cre
-% S_2 = Strain 2: RIMs/ELKS/Munc13-Cre
+% We define:
+% S_1 = Strain 1: RIMs+ELKS
+% S_2 = Strain 2: RIMs+ELKS+Munc13
 % 
-% To perform an experiment in a given strain, several mice are killed, the
-% hippocampi (HC) are dissected, cells dissociated and pooled together in
-% one big primary culture. This culture is then divided into two groups:
-% one is treated with a lentivirus containing Cre (= KO); the other is
-% treated with a lentivirus containing a dead Cre, 'delta-Cre' (= Control).
-% From each culture, multiple cells are tested. Each cell is patch clamped
-% and synaptic transmission is tested by measuring the size of the
-% post-synaptic current (EPSC) evoked by an action potential. This
-% measurment is generally repeated 5 times for each cell.
+% To perform an experiment in a given strain, the hippocampi of several 
+% newborn mice are dissected out, and the cells are dissociated and 
+% pooled together in one primary culture. This culture is then divided into 
+% two pools subjected to different conditions: one is treated with a 
+% lentivirus containing Cre (= cKO); the other is treated with a lentivirus 
+% containing a catalytically inactive version of Cre (= control). 
+% From each culture, multiple cells are tested. Each cell is patch clamped 
+% and synaptic transmission is tested by measuring the size of the 
+% postsynaptic current (EPSC or IPSC) evoked by an action potential or 
+% the size of the postsynaptic currentreadily releasable pool evoked by 
+% the application of hypertonic sucrose. 
+% This measurement (= sweep, technical replicate) is repeated 5-6 times 
+% for each cell for action potential-evoked release, and once per cell 
+% for sucrose-evoked release. The culture procedure is typically repeated 
+% in at least three batches of culture.
 % 
-% C_1 = Condition 1: KO
+% We define:
+% C_1 = Condition 1: cKO
 % C_2 = Condition 2: Control
 % 
 % Thus each group of 5 related measurements is uniquely identified by FOUR
@@ -61,15 +69,14 @@ function [Treal, Tboot, allMeans, SE, CI, pValue] = ...
 % 
 % For ease of discussion, we'll think of four groups:
 % 
-% Group A: S_1, C_1 (RIMS/ELKS KO)
-% Group B: S_1, C_2 (RIMS/ELKS Control)
-% Group C: S_2, C_1 (RIMS/ELKS/Munc13 KO)
-% Group D: S_2, C_2 (RIMS/ELKS/Munc13 Control)
+% Group A: S_1, C_1 (RIMS+ELKS cKO)
+% Group B: S_1, C_2 (RIMS+ELKS Control)
+% Group C: S_2, C_1 (RIMS+ELKS+Munc13 cKO)
+% Group D: S_2, C_2 (RIMS+ELKS+Munc13 Control)
 % 
-% The scientific question is whether knocking out Munc13 (triple mutant,
-% S2) causes a greater relative decrease in synaptic transmission as
-% compared to the double mutant (S1). So we will define our test statistic,
-% T, as:
+% The scientific question is whether knocking out Munc13 in addition to 
+% RIM+ELKS causes a greater relative decrease in synaptic transmission. 
+% So we will define our test statistic, T, as:
 % 
 % T = (mean(Group_A) / mean(Group_B)) / . . . 
 %     (mean(Group_C) / mean(Group_D)) 
@@ -103,10 +110,10 @@ varNames = ds.Properties.VariableNames;
 
 %% Calculate the actual value of our test statistic, T
 
-dsGrpA = ds((ds.Strain == 1) & (ds.Condition == 1),:);  % double KO Cre
-dsGrpB = ds((ds.Strain == 1) & (ds.Condition == 2),:);  % double KO control
-dsGrpC = ds((ds.Strain == 2) & (ds.Condition == 1),:);  % triple KO Cre
-dsGrpD = ds((ds.Strain == 2) & (ds.Condition == 2),:);  % triple KO control
+dsGrpA = ds((ds.Strain == 1) & (ds.Condition == 1),:);  % RIM+ELKS cKO
+dsGrpB = ds((ds.Strain == 1) & (ds.Condition == 2),:);  % RIM+ELKS Control
+dsGrpC = ds((ds.Strain == 2) & (ds.Condition == 1),:);  % RIM+ELKS+Munc13 cKO
+dsGrpD = ds((ds.Strain == 2) & (ds.Condition == 2),:);  % RIM+ELKS+Munc13 Control
 
 Treal = (mean(dsGrpA.PSC,'omitnan') / mean(dsGrpB.PSC,'omitnan')) / ...
         (mean(dsGrpC.PSC,'omitnan') / mean(dsGrpD.PSC,'omitnan'));
@@ -128,17 +135,17 @@ tic;
 % For nBoot = 100, run time is about 3 seconds
 
 % define constants:
-nStrains = 2;   % S_1 = RIMs/ELKS, S_2 = RIMs/ELKS/Munc13
-nConds = 2;     % C_1 = KO, C_2 = control
+nStrains = 2;   % S_1 = RIMs+ELKS, S_2 = RIMs+ELKS+Munc13
+nConds = 2;     % C_1 = cKO, C_2 = Control
 
 % variable to store the grand mean value of the EPSCs for each group (rows)
 % and each bootstrap iteration (columns):
 allMeans = zeros(nStrains*nConds, nBoot);
 
 for thisBoot = 1:nBoot
-    % Two strains: RIMS/ELKS-Cre and RIMS/ELKS/Munc13-Cre
+    % Two strains: RIMS+ELKS and RIMS+ELKS+Munc13
     for thisStrain = 1: nStrains
-        % Two conditions: Cre and control
+        % Two conditions: cKO and Control
         for thisCond = 1:nConds
             
             % Temporary variable to hold the resampled EPSC values:
