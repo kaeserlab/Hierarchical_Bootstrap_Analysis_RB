@@ -57,7 +57,7 @@ function [Treal, Tboot, allMeans, SE, CI, pValue] = ...
 % C_1 = Condition 1: cKO
 % C_2 = Condition 2: control
 % 
-% Thus each group of 5 related measurements is uniquely identified by FOUR
+% Thus each group of 5 related measurements is uniquely identified by Five
 % numbers, which will be variables (columns) in the Excel file. The Excel
 % file will be read in as a Table variable, 'ds':
 % 
@@ -65,6 +65,7 @@ function [Treal, Tboot, allMeans, SE, CI, pValue] = ...
 % ds.Cond [1:2]
 % ds.Batch [1:nBatches], may vary for different experiments
 % ds.Cell [1:nCells], may vary for different batches
+% ds.Sweep [1:nSweeps], may vary for different experiments
 % 
 % For ease of discussion, we'll think of four groups:
 % 
